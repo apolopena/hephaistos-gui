@@ -9,8 +9,8 @@
 # See https://github.com/nbusseneau/hephaistos
 #
 # Notes:
-# This script is most useful on the steam deck so you can pach the screen back to 16:9 or 16:10
-# Without having to go to desktop mode
+# This script is most useful on the steam deck so you can patch the screen back to 16:9 or 16:10
+# without having to go back into to desktop mode
 
 ScreenResDialog(){
   zenity \
@@ -40,6 +40,12 @@ ParseDimensions() {
   [[ -n "$width" && -n "$height" ]] && echo $width $height
 }
 
+Patched(){
+  # Use a string as the hook for whether or not Hades has been alread been patched since hephaistos does not currently use error codes
+  # See: https://github.com/nbusseneau/hephaistos/blob/9c11ccbd215bfd70c2155bc2548331665608c2e7/hephaistos/cli.py#L408
+  ./hephaistos status | grep "correctly" &> /dev/null; [[  $? -ne 0 ]] && return 1 || return 0
+}
+
 Exec(){
   [[ -z "$1" ]] && exit
 
@@ -62,10 +68,22 @@ Exec(){
   fi
 
   zenity --info \
-       --title "Success!" \
+       --title "Success" \
        --width 600 \
        --height 100 \
        --text="Hades screen resolution is set to ${width}x${height}"
 }
 
-Exec $(ParseDimensions "$(ScreenResDialog)") &> /dev/null
+Main(){
+  if [[ ! -f hephaistos ]]; then
+    zenity --error --width 600 --title="Error: Missing binary" \
+    --text="$( echo "Hephaistos does not appear to be installed.\nSee https://github.com/nbusseneau/hephaistos/tree/main#install")"
+  elif ! Patched ]]; then
+    zenity --error --width 600 --title="Error: Hades is not patched" \
+  --text="$( echo "Hades must be patched before screen resolutions can be changed.\nSee https://github.com/nbusseneau/hephaistos/tree/main#cli-usage")"
+  else
+    Exec $(ParseDimensions "$(ScreenResDialog)") &> /dev/null
+  fi
+}
+
+Main
